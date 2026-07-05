@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Local AI Command Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: { dark: '#1a1a2e', accent: '#e94560', light: '#16213e' }
+    }
+  }
+}
+</script>
+<style>
+body { background: #1a1a2e; color: #fff; font-family: system-ui, sans-serif; }
+.sidebar { background: #16213e; }
+.content { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; }
+textarea, input { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px; border-radius: 6px; width: 100%; }
+button { background: #e94560; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+button:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState } = React;
+const API = 'http://localhost:8000';
+const MODES = [
+  { id: 'chat', icon: '💬', label: 'Chat' },
+  { id: 'pdf', icon: '📄', label: 'PDF Summarizer' },
+  { id: 'ocr', icon: '👁', label: 'OCR' },
+  { id: 'voice', icon: '🎤', label: 'Voice Input' },
+  { id: 'caption', icon: '🖼', label: 'Caption Image' },
+  { id: 'search', icon: '🔍', label: 'File Search' },
+  { id: 'rag', icon: '🧠', label: 'RAG Query' },
+];
+
+function Chat() {
+  const [msg, setMsg] = useState('');
+  const [resp, setResp] = useState('');
+  const send = async () => {
+    const r = await fetch(`${API}/chat`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})}).then(r=>r.json());
+    setResp(r.response);
+  };
+  return <div><textarea rows={4} placeholder="Type your message..." value={msg} onChange={e=>setMsg(e.target.value)}/><br/>
+    <button class="mt-2" onClick={send}>Send</button>
+    {resp && <div class="mt-2 p-3 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{resp}</div>}
+  </div>;
+}
+
+function PdfSummarizer() {
+  const [resp, setResp] = useState('');
+  const upload = async (e) => {
+    const fd = new FormData(); fd.append('file', e.target.files[0]);
+    const r = await fetch(`${API}/summarize-pdf`, {method:'POST',body:fd}).then(r=>r.json());
+    setResp(r.summary);
+  };
+  return <div><input type="file" accept=".pdf" onChange={upload}/>{resp && <div class="mt-2 p-3 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{resp}</div>}</div>;
+}
+
+function Ocr() {
+  const [resp, setResp] = useState('');
+  const upload = async (e) => {
+    const fd = new FormData(); fd.append('file', e.target.files[0]);
+    const r = await fetch(`${API}/ocr`, {method:'POST',body:fd}).then(r=>r.json());
+    setResp(r.text);
+  };
+  return <div><input type="file" accept="image/*" onChange={upload}/>{resp && <div class="mt-2 p-3 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{resp}</div>}</div>;
+}
+
+function VoiceInput() {
+  const [resp, setResp] = useState('');
+  const record = async () => {
+    const r = await fetch(`${API}/voice-input`, {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>r.json());
+    setResp(r.text);
+  };
+  return <div><button onClick={record}>🎤 Simulate Voice Input</button>{resp && <div class="mt-2 p-3 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{resp}</div>}</div>;
+}
+
+function CaptionImage() {
+  const [resp, setResp] = useState('');
+  const upload = async (e) => {
+    const fd = new FormData(); fd.append('file', e.target.files[0]);
+    const r = await fetch(`${API}/caption-image`, {method:'POST',body:fd}).then(r=>r.json());
+    setResp(r.caption);
+  };
+  return <div><input type="file" accept="image/*" onChange={upload}/>{resp && <div class="mt-2 p-3 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{resp}</div>}</div>;
+}
+
+function FileSearch() {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const search = async () => {
+    const r = await fetch(`${API}/file-search?q=${encodeURIComponent(q)}`).then(r=>r.json());
+    setResults(r.results);
+  };
+  return <div><input placeholder="Search files..." value={q} onChange={e=>setQ(e.target.value)}/><br/>
+    <button class="mt-2" onClick={search}>Search</button>
+    {results.map((r,i) => <div key={i} class="mt-1 p-2 rounded" style={{background:'rgba(255,255,255,0.08)'}}><strong>{r.file}</strong><br/>{r.snippet}</div>)}
+  </div>;
+}
+
+function RagQuery() {
+  const [q, setQ] = useState('');
+  const [a, setA] = useState('');
+  const ask = async () => {
+    const r = await fetch(`${API}/rag-query`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})}).then(r=>r.json());
+    setA(r.answer);
+  };
+  return <div><textarea rows={3} placeholder="Ask a question about your documents..." value={q} onChange={e=>setQ(e.target.value)}/><br/>
+    <button class="mt-2" onClick={ask}>Ask</button>
+    {a && <div class="mt-2 p-3 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{a}</div>}
+  </div>;
+}
+
+function App() {
+  const [mode, setMode] = useState('chat');
+  const cmp = {chat: Chat, pdf: PdfSummarizer, ocr: Ocr, voice: VoiceInput, caption: CaptionImage, search: FileSearch, rag: RagQuery};
+  const C = cmp[mode];
+  return <div class="flex h-screen">
+    <div class="sidebar w-48 p-4 flex flex-col gap-2">
+      {MODES.map(m => <button key={m.id} onClick={() => setMode(m.id)} class={`text-left ${mode===m.id?'opacity-100':'opacity-60'}`}>{m.icon} {m.label}</button>)}
+    </div>
+    <div class="flex-1 p-6"><h1 class="text-2xl font-bold mb-4">🤖 Local AI Command Center</h1>
+      <p class="text-sm opacity-60 mb-4">All endpoints return mock data. Connect Ollama + models for real functionality.</p>
+      <div class="content"><C/></div>
+    </div>
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
